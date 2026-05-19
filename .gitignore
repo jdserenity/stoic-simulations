@@ -9,6 +9,8 @@
 # JavaScript / TypeScript
 node_modules/
 dist/
+.wrangler/
+.dev.vars
 build/
 coverage/
 

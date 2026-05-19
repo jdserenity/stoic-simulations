@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "stoic-simulations",
+  "compatibility_date": "2026-05-19",
+  "pages_build_output_dir": "./dist",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "stoic-simulations",
+      "database_id": "71977478-ff70-43be-bfdc-b0c1541ec231",
+      "preview_database_id": "DB"
+    }
+  ]
+}

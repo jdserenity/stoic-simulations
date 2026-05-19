@@ -1,0 +1,23 @@
+{
+  "name": "stoic-simulations",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:cf": "npm run build && wrangler pages dev dist",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply stoic-simulations --local",
+    "db:migrate:remote": "wrangler d1 migrations apply stoic-simulations --remote",
+    "deploy": "npm run build && wrangler pages deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250525.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.4",
+    "wrangler": "^4.93.0"
+  }
+}
