@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientId, parseIds, toDayDto } from './_shared';
+import { clientId, localDateKey, parseIds, toDayDto } from './_shared';
 
 describe('clientId', () => {
   it('accepts valid uuid', () => {
@@ -12,6 +12,19 @@ describe('clientId', () => {
   it('rejects invalid id', () => {
     const req = new Request('http://x', { headers: { 'X-Client-Id': 'bad' } });
     expect(clientId(req)).toBeNull();
+  });
+});
+
+describe('localDateKey', () => {
+  it('uses X-Local-Date when valid', () => {
+    const req = new Request('http://x', { headers: { 'X-Local-Date': '2026-05-20' } });
+    expect(localDateKey(req)).toBe('2026-05-20');
+  });
+
+  it('falls back when header missing or invalid', () => {
+    expect(localDateKey(new Request('http://x'))).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const bad = new Request('http://x', { headers: { 'X-Local-Date': 'yesterday' } });
+    expect(localDateKey(bad)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
 

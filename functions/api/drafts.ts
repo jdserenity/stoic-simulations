@@ -1,6 +1,5 @@
-import { todayKey } from '../../src/lib/daily';
 import type { DraftDto } from '../../shared/api-types';
-import { clientId, ensureClient, error, json } from '../_shared';
+import { clientId, ensureClient, error, json, localDateKey } from '../_shared';
 
 function bucketKey(scope: 'daily' | 'library', dateKey: string): string {
   return scope === 'daily' ? dateKey : 'library';
@@ -18,7 +17,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   await ensureClient(context.env.DB, cid);
-  const bucket = bucketKey(scope, todayKey());
+  const bucket = bucketKey(scope, localDateKey(context.request));
   const { results } = await context.env.DB.prepare(
     'SELECT field_id, value FROM drafts WHERE client_id = ? AND scope = ? AND bucket_key = ? AND exercise_id = ?',
   ).bind(cid, scope, bucket, exerciseId).all<{ field_id: string; value: string }>();
@@ -45,7 +44,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
   }
 
   await ensureClient(context.env.DB, cid);
-  const bucket = bucketKey(scope, todayKey());
+  const bucket = bucketKey(scope, localDateKey(context.request));
 
   if (!value) {
     await context.env.DB.prepare(

@@ -1,4 +1,6 @@
 import { exerciseById, EXERCISES, type Exercise } from '../exercises';
+import { todayKey } from './lib/daily';
+import { displayDone, recordLibraryCompletion } from './lib/library-bonus';
 import {
   ensureDayState,
   getCachedDayState,
@@ -68,7 +70,7 @@ function renderHome(): string {
   const state = dayState ?? getCachedDayState();
   if (!state) return '<p class="lede">…</p>';
   const total = state.assignedIds.length;
-  const done = state.completedIds.length;
+  const done = displayDone(state.completedIds.length, state.dateKey);
 
   if (state.dailyComplete) {
     return `
@@ -100,7 +102,7 @@ function renderLibraryList(): string {
   return `
     <section class="library">
       <h1>Library</h1>
-      <p class="lede">Free practice. Does not affect today's progress.</p>
+      <p class="lede">Free practice. Each completion boosts today's count.</p>
       <nav class="list">${items}</nav>
       <button type="button" class="ghost block" data-nav="home">Back</button>
     </section>
@@ -142,6 +144,8 @@ function bindForm(ex: Exercise, scope: 'daily' | 'library'): void {
     void (async () => {
       if (scope === 'daily') {
         dayState = await markDailyComplete(ex.id);
+      } else {
+        recordLibraryCompletion(dayState?.dateKey ?? todayKey());
       }
       view = scope === 'daily' ? 'home' : 'library-list';
       activeId = null;
@@ -173,6 +177,13 @@ async function refreshDay(): Promise<void> {
   dayState = await ensureDayState();
 }
 
+function refreshDayIfDateChanged(): void {
+  if (!ready) return;
+  const key = todayKey();
+  if (dayState?.dateKey === key) return;
+  void refreshDay().then(() => paint()).catch(() => {});
+}
+
 export async function boot(): Promise<void> {
   ready = false;
   paint();
@@ -187,4 +198,10 @@ export async function boot(): Promise<void> {
 
 export function initApp(): void {
   void boot();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshDayIfDateChanged();
+  });
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) refreshDayIfDateChanged();
+  });
 }

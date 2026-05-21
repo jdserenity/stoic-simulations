@@ -1,6 +1,8 @@
 import type { DayStateDto } from '../shared/api-types';
+import { todayKey } from '../src/lib/daily';
 
 const CLIENT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -16,6 +18,12 @@ export function error(message: string, status: number): Response {
 export function clientId(request: Request): string | null {
   const id = request.headers.get('X-Client-Id')?.trim() ?? '';
   return CLIENT_RE.test(id) ? id : null;
+}
+
+/** Device-local calendar day (YYYY-MM-DD); falls back to UTC when header missing/invalid. */
+export function localDateKey(request: Request): string {
+  const header = request.headers.get('X-Local-Date')?.trim() ?? '';
+  return DATE_KEY_RE.test(header) ? header : todayKey();
 }
 
 export async function ensureClient(db: D1Database, id: string): Promise<void> {

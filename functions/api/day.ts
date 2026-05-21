@@ -1,7 +1,7 @@
 import { DAILY_COUNT, EXERCISES } from '../../exercises';
-import { pickDailyIds, todayKey } from '../../src/lib/daily';
+import { pickDailyIds } from '../../src/lib/daily';
 import type { DayStateDto } from '../../shared/api-types';
-import { clientId, ensureClient, error, json, parseIds, toDayDto } from '../_shared';
+import { clientId, ensureClient, error, json, localDateKey, parseIds, toDayDto } from '../_shared';
 
 const POOL = EXERCISES.map((e) => e.id);
 
@@ -27,7 +27,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const cid = clientId(context.request);
   if (!cid) return error('Missing or invalid X-Client-Id', 400);
   await ensureClient(context.env.DB, cid);
-  const state = await loadDay(context.env.DB, cid, todayKey());
+  const state = await loadDay(context.env.DB, cid, localDateKey(context.request));
   return json(state);
 };
 
@@ -46,7 +46,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!exerciseId) return error('exerciseId required', 400);
 
   await ensureClient(context.env.DB, cid);
-  const dateKey = todayKey();
+  const dateKey = localDateKey(context.request);
   const state = await loadDay(context.env.DB, cid, dateKey);
 
   if (!state.assignedIds.includes(exerciseId)) return json(state);

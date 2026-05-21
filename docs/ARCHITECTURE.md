@@ -11,14 +11,16 @@ Minimal iPhone PWA for daily cognitive stoicism exercises.
 
 ## Product behavior
 
-- Each calendar day, **2 exercises** are chosen at random from the active pool (deterministic per date).
+- Each **device-local calendar day** (`X-Local-Date` on API calls), **2 exercises** are chosen at random from the active pool (deterministic per date).
 - User completes them one at a time (title, instructions, text fields).
-- When both daily exercises are done, **Library** unlocks; library work does not affect daily progress.
+- When both daily exercises are done, **Library** unlocks; library completions do not count toward finishing the daily pair, but each library **Done** adds +1 to the home-screen progress numerator (e.g. 3/2), stored per device in `localStorage`.
 - Exercises 2 (Attention Meditation) and 3 (Voluntary Discomfort) are excluded from the pool.
 
 ## Persistence (D1)
 
-Per-device identity: random UUID in `localStorage` (`stoic:clientId`), sent as `X-Client-Id` on API calls.
+Per-device identity: random UUID in `localStorage` (`stoic:clientId`), sent as `X-Client-Id` on API calls. Calendar day: `X-Local-Date` (`YYYY-MM-DD` from the browser).
+
+Service worker caches static shell assets only (`public/sw.js`); `/api/*` is never cached.
 
 | Table | Purpose |
 |-------|---------|
