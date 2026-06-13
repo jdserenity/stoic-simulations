@@ -10,6 +10,13 @@ import {
   saveDraft,
   type DayState,
 } from './lib/storage';
+import type { DailyMeditationsDto } from '../shared/api-types';
+import {
+  addMeditation,
+  deleteMeditation,
+  ensureDailyMeditations,
+  getCachedDailyMeditations,
+} from './lib/meditations';
 
 type View = 'home' | 'daily' | 'library-list' | 'library';
 
@@ -17,6 +24,7 @@ let view: View = 'home';
 let activeId: string | null = null;
 let activeScope: 'daily' | 'library' = 'daily';
 let dayState: DayState | null = null;
+let dailyMeds: DailyMeditationsDto | null = null;
 let ready = false;
 
 const root = document.getElementById('app')!;
@@ -85,11 +93,22 @@ function renderHome(): string {
   const next = state.nextId ? exerciseById(state.nextId) : null;
   const title = next?.title ?? 'Practice';
 
+  const meds = dailyMeds?.items?.length
+    ? `<div class="meds">${
+        dailyMeds.items.map((m) =>
+          `<div class="meditation" data-med-id="${esc(m.id)}"><div class="meditation-text">${esc(m.text)}</div></div>`
+        ).join('')
+      }</div>`
+    : '';
+
   return `
     <section class="home">
-      <h1>Today</h1>
-      <p class="lede">${done} of ${total} complete</p>
-      <button type="button" class="primary block" data-nav="daily" data-id="${esc(state.nextId ?? '')}">${esc(title)}</button>
+      <div class="exercises">
+        <h1>Today</h1>
+        <p class="lede">${done} of ${total} complete</p>
+        <button type="button" class="primary block" data-nav="daily" data-id="${esc(state.nextId ?? '')}">${esc(title)}</button>
+      </div>
+      ${meds}
     </section>
   `;
 }
@@ -171,17 +190,78 @@ function bind(): void {
     const ex = exerciseById(activeId);
     if (ex) bindForm(ex, activeScope);
   }
+
+  root.querySelectorAll('.meditation').forEach((el) => {
+    const id = (el as HTMLElement).dataset.medId;
+    if (!id) return;
+
+    let holdTimer: number | null = null;
+
+    const startHold = (e: Event) => {
+      e.preventDefault();
+      (el as HTMLElement).classList.add('holding');
+      holdTimer = window.setTimeout(() => {
+        const card = el as HTMLElement;
+        const textEl = card.querySelector('.meditation-text');
+        const originalText = textEl ? textEl.textContent || '' : '';
+        card.classList.remove('holding');
+        card.classList.add('confirming');
+        card.innerHTML = `
+          <div class="meditation-text" style="margin-bottom:0.5rem;opacity:0.85;font-size:0.95rem;">${esc(originalText)}</div>
+          <div style="font-size:0.85rem;margin-bottom:0.6rem;">Are you sure you want to delete this meditation?</div>
+          <div style="display:flex;gap:0.5rem;">
+            <button type="button" class="ghost" style="flex:1;font-size:0.85rem;padding:0.4rem 0;" data-action="cancel">Cancel</button>
+            <button type="button" class="primary" style="flex:1;font-size:0.85rem;padding:0.4rem 0;background:#a33;color:#fff;" data-action="delete">Delete</button>
+          </div>
+        `;
+        const cancelBtn = card.querySelector('[data-action="cancel"]');
+        const deleteBtn = card.querySelector('[data-action="delete"]');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', () => paint());
+        }
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async () => {
+            try {
+              dailyMeds = await deleteMeditation(id);
+              paint();
+            } catch {
+              paint();
+            }
+          });
+        }
+      }, 750);
+    };
+
+    const endHold = () => {
+      if (holdTimer !== null) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+      }
+      (el as HTMLElement).classList.remove('holding');
+    };
+
+    el.addEventListener('mousedown', startHold);
+    el.addEventListener('mouseup', endHold);
+    el.addEventListener('mouseleave', endHold);
+    el.addEventListener('touchstart', startHold, { passive: false });
+    el.addEventListener('touchend', endHold);
+    el.addEventListener('touchcancel', endHold);
+  });
 }
 
 async function refreshDay(): Promise<void> {
   dayState = await ensureDayState();
 }
 
+async function refreshMeds(): Promise<void> {
+  dailyMeds = await ensureDailyMeditations();
+}
+
 function refreshDayIfDateChanged(): void {
   if (!ready) return;
   const key = todayKey();
   if (dayState?.dateKey === key) return;
-  void refreshDay().then(() => paint()).catch(() => {});
+  void refreshDay().then(() => refreshMeds().then(() => paint()).catch(() => {})).catch(() => {});
 }
 
 export async function boot(): Promise<void> {
@@ -189,8 +269,27 @@ export async function boot(): Promise<void> {
   paint();
   try {
     await refreshDay();
+    await refreshMeds();
     ready = true;
     paint();
+
+    // Handle share from X (or other apps) via Web Share Target
+    const params = new URLSearchParams(window.location.search);
+    const sharedText = params.get('text');
+    const sharedUrl = params.get('url') || params.get('link');
+    if (sharedText) {
+      try {
+        await addMeditation({
+          text: sharedText.trim(),
+          url: sharedUrl ? sharedUrl.trim() : undefined,
+        });
+        history.replaceState({}, document.title, window.location.pathname);
+        dailyMeds = await ensureDailyMeditations();
+        paint();
+      } catch {
+        // ignore add errors for share
+      }
+    }
   } catch {
     renderError('Could not reach the server. Check your connection and retry.');
   }

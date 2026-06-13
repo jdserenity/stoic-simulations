@@ -12,3 +12,14 @@ export type DraftDto = {
   scope: 'daily' | 'library';
   value: string;
 };
+
+export type Meditation = {
+  id: string;
+  text: string;
+  url?: string;
+};
+
+export type DailyMeditationsDto = {
+  dateKey: string;
+  items: Meditation[];
+};

@@ -59,3 +59,16 @@ Vite-only UI with API proxy: run `dev:cf` on :8788 and `npm run dev` (proxies `/
 - `npm run dev:cf` — build + `wrangler pages dev dist`
 - `npm test` — unit tests
 - `npm run deploy` — production Pages upload
+
+## JD Meditations
+
+Private personal collection of the user's own short timeless/philosophical insights (initially from X posts) for deliberate re-encounter. The feature lives inside the Stoic Simulations PWA so it rides the existing daily check habit.
+
+- Capture: Web Share Target. After the user adds the PWA to the iPhone home screen (Safari Share → Add to Home Screen), the installed app appears as a share destination. Sharing a tweet (text + url) from the X app or browser saves it as a new meditation item. Manual entry inside the app is a fallback. No X account connection required.
+- Daily surfacing: 3 items per device-local calendar day.
+- Deck model: without-replacement shuffled stack. The current set of saved items is shuffled into order; items are drawn and advanced through until the stack is empty, then the full current set is reshuffled for the next cycle. New items added via share go into the next cycle only (do not enter the active remaining deck).
+- Delete: users can delete items.
+- Persistence: reuses the existing per-client-id (localStorage stoic:clientId sent as X-Client-Id) + D1 model. New tables/endpoints will be added following the patterns in day_sessions/drafts and functions/api/*.
+- Integration: surfaced as part of the daily "Today" experience in the PWA (alongside the stoic exercises). No separate app or public distribution.
+
+Non-goals (in addition to prior sections): no reposting or automation on X/other platforms; no chronological feed or full archive browser as the primary UI; no multi-user or cross-profile sync beyond the existing per-client model.

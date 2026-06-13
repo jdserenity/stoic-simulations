@@ -1,4 +1,4 @@
-import type { DayStateDto, DraftDto } from '../../shared/api-types';
+import type { DailyMeditationsDto, DayStateDto, DraftDto, Meditation } from '../../shared/api-types';
 import { todayKey } from './daily';
 import { getClientId } from './client-id';
 
@@ -38,5 +38,14 @@ export const api = {
   migrate: (body: unknown) => request<{ ok: boolean }>('/api/migrate', {
     method: 'POST',
     body: JSON.stringify(body),
+  }),
+  getMeditations: () => request<DailyMeditationsDto>('/api/meditations'),
+  addMeditation: (body: { text: string; url?: string }) => request<Meditation>('/api/meditations', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+  deleteMeditation: (id: string) => request<{ ok: boolean }>('/api/meditations', {
+    method: 'DELETE',
+    body: JSON.stringify({ id }),
   }),
 };
