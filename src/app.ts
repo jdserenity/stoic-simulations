@@ -11,6 +11,8 @@ import {
   type DayState,
 } from './lib/storage';
 import type { DailyMeditationsDto } from '../shared/api-types';
+import { getClientId } from './lib/client-id';
+import { copyText } from './lib/copy-text';
 import {
   addMeditation,
   deleteMeditation,
@@ -18,7 +20,7 @@ import {
   getCachedDailyMeditations,
 } from './lib/meditations';
 
-type View = 'home' | 'daily' | 'library-list' | 'library';
+type View = 'home' | 'daily' | 'library-list' | 'library' | 'settings';
 
 let view: View = 'home';
 let activeId: string | null = null;
@@ -109,6 +111,29 @@ function renderHome(): string {
         <button type="button" class="primary block" data-nav="daily" data-id="${esc(state.nextId ?? '')}">${esc(title)}</button>
       </div>
       ${meds}
+      <button type="button" class="ghost block" data-nav="settings">Save from X</button>
+    </section>
+  `;
+}
+
+function renderSettings(): string {
+  const id = getClientId();
+  const apiUrl = `${window.location.origin}/api/meditations`;
+  return `
+    <section class="settings">
+      <h1>Save from X</h1>
+      <p class="lede">iOS does not let PWAs appear in the share sheet. Use a personal Shortcut instead.</p>
+      <p class="meta">Device ID</p>
+      <p class="client-id">${esc(id)}</p>
+      <button type="button" class="primary block" id="copy-client-id">Copy ID</button>
+      <p class="lede setup-steps">Shortcut: receive Text and URLs from Share Sheet → POST to <span class="mono">${esc(apiUrl)}</span> with headers <span class="mono">Content-Type: application/json</span>, <span class="mono">X-Client-Id</span> (paste ID), <span class="mono">X-Local-Date</span> (today as YYYY-MM-DD), body <span class="mono">{"text":"…","url":"…"}</span>.</p>
+      <form id="add-med-form" class="fields">
+        <p class="meta">Or add manually</p>
+        <label class="field"><span>Text</span><textarea id="med-text" rows="4" placeholder="Paste post text"></textarea></label>
+        <label class="field"><span>URL (optional)</span><input id="med-url" type="text" placeholder="https://x.com/…" /></label>
+        <button type="submit" class="primary block">Save meditation</button>
+      </form>
+      <button type="button" class="ghost block" data-nav="home">Back</button>
     </section>
   `;
 }
@@ -133,6 +158,7 @@ function paint(): void {
 
   let html = '';
   if (view === 'home') html = renderHome();
+  else if (view === 'settings') html = renderSettings();
   else if (view === 'library-list') html = renderLibraryList();
   else if ((view === 'daily' || view === 'library') && activeId) {
     const ex = exerciseById(activeId);
@@ -190,6 +216,8 @@ function bind(): void {
     const ex = exerciseById(activeId);
     if (ex) bindForm(ex, activeScope);
   }
+
+  if (view === 'settings') bindSettings();
 
   root.querySelectorAll('.meditation').forEach((el) => {
     const id = (el as HTMLElement).dataset.medId;
@@ -249,6 +277,31 @@ function bind(): void {
   });
 }
 
+function bindSettings(): void {
+  document.getElementById('copy-client-id')?.addEventListener('click', () => {
+    void copyText(getClientId()).then((ok) => {
+      const btn = document.getElementById('copy-client-id');
+      if (!btn) return;
+      const prev = btn.textContent;
+      btn.textContent = ok ? 'Copied' : 'Copy failed';
+      window.setTimeout(() => { btn.textContent = prev; }, 1500);
+    });
+  });
+  document.getElementById('add-med-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = (document.getElementById('med-text') as HTMLTextAreaElement | null)?.value ?? '';
+    const url = (document.getElementById('med-url') as HTMLInputElement | null)?.value ?? '';
+    void (async () => {
+      try {
+        await addMeditation({ text: text.trim(), url: url.trim() || undefined });
+        dailyMeds = await ensureDailyMeditations();
+        view = 'home';
+        paint();
+      } catch { /* leave form filled */ }
+    })();
+  });
+}
+
 async function refreshDay(): Promise<void> {
   dayState = await ensureDayState();
 }
@@ -272,24 +325,6 @@ export async function boot(): Promise<void> {
     await refreshMeds();
     ready = true;
     paint();
-
-    // Handle share from X (or other apps) via Web Share Target
-    const params = new URLSearchParams(window.location.search);
-    const sharedText = params.get('text');
-    const sharedUrl = params.get('url') || params.get('link');
-    if (sharedText) {
-      try {
-        await addMeditation({
-          text: sharedText.trim(),
-          url: sharedUrl ? sharedUrl.trim() : undefined,
-        });
-        history.replaceState({}, document.title, window.location.pathname);
-        dailyMeds = await ensureDailyMeditations();
-        paint();
-      } catch {
-        // ignore add errors for share
-      }
-    }
   } catch {
     renderError('Could not reach the server. Check your connection and retry.');
   }
