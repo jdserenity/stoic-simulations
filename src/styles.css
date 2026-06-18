@@ -211,6 +211,11 @@ button.block {
   font-size: 0.85rem;
   color: var(--text);
   opacity: 0.55;
+  transition: opacity 0.9s ease-out;
+}
+
+.med-saved-note.fading {
+  opacity: 0;
 }
 
 .med-saved-note + .med-add,

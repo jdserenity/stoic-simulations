@@ -28,7 +28,10 @@ let dayState: DayState | null = null;
 let dailyMeds: DailyMeditationsDto | null = null;
 let addingMed = false;
 let medSavedNote: string | null = null;
+let medSavedFading = false;
 let medSavedTimer: number | null = null;
+const MED_SAVED_VISIBLE_MS = 3500;
+const MED_SAVED_FADE_MS = 900;
 let ready = false;
 
 const root = document.getElementById('app')!;
@@ -84,16 +87,23 @@ function clearMedSavedNote(): void {
     medSavedTimer = null;
   }
   medSavedNote = null;
+  medSavedFading = false;
 }
 
 function showMedSavedNote(text: string): void {
   clearMedSavedNote();
   medSavedNote = medSavedMessage(text);
+  medSavedFading = false;
   medSavedTimer = window.setTimeout(() => {
-    medSavedNote = null;
-    medSavedTimer = null;
+    medSavedFading = true;
     if (view === 'home' && ready) paint();
-  }, 4500);
+    medSavedTimer = window.setTimeout(() => {
+      medSavedNote = null;
+      medSavedFading = false;
+      medSavedTimer = null;
+      if (view === 'home' && ready) paint();
+    }, MED_SAVED_FADE_MS);
+  }, MED_SAVED_VISIBLE_MS);
 }
 
 function renderMedsSection(): string {
@@ -101,7 +111,9 @@ function renderMedsSection(): string {
   const cards = items.map((m) =>
     `<div class="meditation" data-med-id="${esc(m.id)}"><div class="meditation-text">${esc(m.text)}</div></div>`
   ).join('');
-  const note = medSavedNote ? `<p class="med-saved-note">${esc(medSavedNote)}</p>` : '';
+  const note = medSavedNote
+    ? `<p class="med-saved-note${medSavedFading ? ' fading' : ''}">${esc(medSavedNote)}</p>`
+    : '';
   const add = addingMed
     ? `<form id="med-add-form" class="med-add-form"><textarea id="med-add-text" rows="3" placeholder="A line worth keeping"></textarea><div class="med-add-actions"><button type="button" class="ghost med-add-cancel" id="med-add-cancel">Cancel</button><button type="submit" class="primary med-add-save">Save</button></div></form>`
     : `<button type="button" class="med-add" id="med-add-btn" aria-label="Add meditation">+</button>`;
