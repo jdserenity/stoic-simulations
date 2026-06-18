@@ -72,7 +72,7 @@ Private personal collection of the user's own short timeless/philosophical insig
 
 **Platform:** iPhone only (Safari PWA). iOS does not support the Web Share Target API (`share_target` in the manifest is not used).
 
-- **Capture from X:** personal **iOS Shortcut** in the share sheet. POSTs to `POST /api/meditations` with `X-Local-Date` (`YYYY-MM-DD`) and JSON `{ "text": "…", "url": "…" }`. No X account connection.
+- **Capture from X:** personal **iOS Shortcut** in the share sheet. POSTs to `POST /api/meditations` with `X-Local-Date` (`YYYY-MM-DD`) and JSON `{ "text": "…", "url": "…" }`. When `text` is an X/Twitter status URL, the API resolves tweet body text via Twitter oEmbed (`publish.twitter.com`) and stores the canonical URL separately. No X account connection.
 - **Manual capture:** **+** on the Today home screen — single text field for a quote or line worth keeping (not X-specific).
 - **Daily surfacing:** up to 3 items per device-local calendar day (fewer if the pool is smaller).
 - **Deck model:** without-replacement shuffled stack. The current set of saved items is shuffled into order; items are drawn and advanced through until the stack is empty, then the full current set is reshuffled for the next cycle. New items added via capture go into the next cycle only (do not enter the active remaining deck).

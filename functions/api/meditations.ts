@@ -1,7 +1,17 @@
 import type { DailyMeditationsDto, Meditation } from '../../shared/api-types';
 import { drawFromStack } from '../../src/lib/meditations-deck';
 import { needsDailyMeditationDraw, shouldPersistDailyAssignment } from '../../src/lib/meditations-daily';
+import { isXStatusUrl, resolveMeditationCapture } from '../../src/lib/x-status';
 import { ensureUser, error, json, localDateKey, parseIds, userId } from '../_shared';
+
+async function hydrateMeditation(db: D1Database, m: Meditation): Promise<Meditation> {
+  if (!isXStatusUrl(m.text)) return m;
+  const resolved = await resolveMeditationCapture(m.text, m.url);
+  if (resolved.text === m.text && resolved.url === m.url) return m;
+  await db.prepare('UPDATE meditations SET text = ?, url = ? WHERE id = ? AND client_id = ?')
+    .bind(resolved.text, resolved.url ?? null, m.id, userId()).run();
+  return { id: m.id, text: resolved.text, url: resolved.url };
+}
 
 async function loadMeditationsByIds(db: D1Database, ids: string[]): Promise<Meditation[]> {
   if (ids.length === 0) return [];
@@ -9,7 +19,8 @@ async function loadMeditationsByIds(db: D1Database, ids: string[]): Promise<Medi
     'SELECT id, text, url FROM meditations WHERE client_id = ?'
   ).bind(userId()).all<{ id: string; text: string; url: string | null }>();
   const map = new Map(rows.results.map(r => [r.id, { id: r.id, text: r.text, url: r.url || undefined } as Meditation]));
-  return ids.map((id) => map.get(id)).filter((x): x is Meditation => !!x);
+  const items = ids.map((id) => map.get(id)).filter((x): x is Meditation => !!x);
+  return Promise.all(items.map((m) => hydrateMeditation(db, m)));
 }
 
 async function loadOrCreateStack(db: D1Database): Promise<{ deck: string[]; pos: number }> {
@@ -68,12 +79,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const text = (body.text || '').trim();
   if (!text) return error('text required', 400);
   const url = body.url ? body.url.trim() : undefined;
+  const resolved = await resolveMeditationCapture(text, url);
   const id = (globalThis as any).crypto?.randomUUID?.() || ('m' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
   await ensureUser(context.env.DB);
   await context.env.DB.prepare(
     'INSERT INTO meditations (id, client_id, text, url) VALUES (?, ?, ?, ?)'
-  ).bind(id, userId(), text, url ?? null).run();
-  return json<Meditation>({ id, text, url });
+  ).bind(id, userId(), resolved.text, resolved.url ?? null).run();
+  return json<Meditation>({ id, text: resolved.text, url: resolved.url });
 };
 
 export const onRequestDelete: PagesFunction<Env> = async (context) => {
