@@ -1,6 +1,5 @@
 import type { DailyMeditationsDto, DayStateDto, DraftDto, Meditation } from '../../shared/api-types';
 import { todayKey } from './daily';
-import { getClientId } from './client-id';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '';
 
@@ -9,7 +8,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      'X-Client-Id': getClientId(),
       'X-Local-Date': todayKey(),
       ...init?.headers,
     },

@@ -1,14 +1,11 @@
 import type { DraftDto } from '../../shared/api-types';
-import { clientId, ensureClient, error, json, localDateKey } from '../_shared';
+import { ensureUser, error, json, localDateKey, userId } from '../_shared';
 
 function bucketKey(scope: 'daily' | 'library', dateKey: string): string {
   return scope === 'daily' ? dateKey : 'library';
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const cid = clientId(context.request);
-  if (!cid) return error('Missing or invalid X-Client-Id', 400);
-
   const url = new URL(context.request.url);
   const exerciseId = url.searchParams.get('exerciseId')?.trim();
   const scope = url.searchParams.get('scope');
@@ -16,11 +13,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     return error('exerciseId and scope (daily|library) required', 400);
   }
 
-  await ensureClient(context.env.DB, cid);
+  await ensureUser(context.env.DB);
+  const uid = userId();
   const bucket = bucketKey(scope, localDateKey(context.request));
   const { results } = await context.env.DB.prepare(
     'SELECT field_id, value FROM drafts WHERE client_id = ? AND scope = ? AND bucket_key = ? AND exercise_id = ?',
-  ).bind(cid, scope, bucket, exerciseId).all<{ field_id: string; value: string }>();
+  ).bind(uid, scope, bucket, exerciseId).all<{ field_id: string; value: string }>();
 
   const fields: Record<string, string> = {};
   for (const row of results ?? []) fields[row.field_id] = row.value;
@@ -28,9 +26,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 };
 
 export const onRequestPut: PagesFunction<Env> = async (context) => {
-  const cid = clientId(context.request);
-  if (!cid) return error('Missing or invalid X-Client-Id', 400);
-
   let body: DraftDto;
   try {
     body = await context.request.json() as DraftDto;
@@ -43,13 +38,14 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     return error('exerciseId, fieldId, scope required', 400);
   }
 
-  await ensureClient(context.env.DB, cid);
+  await ensureUser(context.env.DB);
+  const uid = userId();
   const bucket = bucketKey(scope, localDateKey(context.request));
 
   if (!value) {
     await context.env.DB.prepare(
       'DELETE FROM drafts WHERE client_id = ? AND scope = ? AND bucket_key = ? AND exercise_id = ? AND field_id = ?',
-    ).bind(cid, scope, bucket, exerciseId, fieldId).run();
+    ).bind(uid, scope, bucket, exerciseId, fieldId).run();
     return json({ ok: true });
   }
 
@@ -58,7 +54,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
      ON CONFLICT(client_id, scope, bucket_key, exercise_id, field_id)
      DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-  ).bind(cid, scope, bucket, exerciseId, fieldId, value).run();
+  ).bind(uid, scope, bucket, exerciseId, fieldId, value).run();
 
   return json({ ok: true });
 };

@@ -1,14 +1,15 @@
-import { DAILY_COUNT, EXERCISES } from '../../exercises';
-import { pickDailyIds } from '../../src/lib/daily';
 import type { DayStateDto } from '../../shared/api-types';
-import { clientId, ensureClient, error, json, localDateKey, parseIds, toDayDto } from '../_shared';
+import { pickDailyIds } from '../../src/lib/daily';
+import { DAILY_COUNT, EXERCISES } from '../../exercises';
+import { ensureUser, error, json, localDateKey, parseIds, toDayDto, userId } from '../_shared';
 
 const POOL = EXERCISES.map((e) => e.id);
 
-async function loadDay(db: D1Database, cid: string, dateKey: string): Promise<DayStateDto> {
+async function loadDay(db: D1Database, dateKey: string): Promise<DayStateDto> {
+  const uid = userId();
   const row = await db.prepare(
     'SELECT assigned_ids, completed_ids FROM day_sessions WHERE client_id = ? AND date_key = ?',
-  ).bind(cid, dateKey).first<{ assigned_ids: string; completed_ids: string }>();
+  ).bind(uid, dateKey).first<{ assigned_ids: string; completed_ids: string }>();
 
   if (!row) {
     const assignedIds = pickDailyIds(POOL, dateKey, DAILY_COUNT);
@@ -16,7 +17,7 @@ async function loadDay(db: D1Database, cid: string, dateKey: string): Promise<Da
     const completedJson = '[]';
     await db.prepare(
       'INSERT INTO day_sessions (client_id, date_key, assigned_ids, completed_ids) VALUES (?, ?, ?, ?)',
-    ).bind(cid, dateKey, assignedJson, completedJson).run();
+    ).bind(uid, dateKey, assignedJson, completedJson).run();
     return toDayDto(dateKey, assignedIds, []);
   }
 
@@ -24,17 +25,12 @@ async function loadDay(db: D1Database, cid: string, dateKey: string): Promise<Da
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const cid = clientId(context.request);
-  if (!cid) return error('Missing or invalid X-Client-Id', 400);
-  await ensureClient(context.env.DB, cid);
-  const state = await loadDay(context.env.DB, cid, localDateKey(context.request));
+  await ensureUser(context.env.DB);
+  const state = await loadDay(context.env.DB, localDateKey(context.request));
   return json(state);
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const cid = clientId(context.request);
-  if (!cid) return error('Missing or invalid X-Client-Id', 400);
-
   let body: { exerciseId?: string };
   try {
     body = await context.request.json() as { exerciseId?: string };
@@ -45,9 +41,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const exerciseId = body.exerciseId?.trim();
   if (!exerciseId) return error('exerciseId required', 400);
 
-  await ensureClient(context.env.DB, cid);
+  await ensureUser(context.env.DB);
+  const uid = userId();
   const dateKey = localDateKey(context.request);
-  const state = await loadDay(context.env.DB, cid, dateKey);
+  const state = await loadDay(context.env.DB, dateKey);
 
   if (!state.assignedIds.includes(exerciseId)) return json(state);
   if (state.completedIds.includes(exerciseId)) return json(state);
@@ -55,7 +52,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const completedIds = [...state.completedIds, exerciseId];
   await context.env.DB.prepare(
     'UPDATE day_sessions SET completed_ids = ? WHERE client_id = ? AND date_key = ?',
-  ).bind(JSON.stringify(completedIds), cid, dateKey).run();
+  ).bind(JSON.stringify(completedIds), uid, dateKey).run();
 
   return json(toDayDto(dateKey, state.assignedIds, completedIds));
 };

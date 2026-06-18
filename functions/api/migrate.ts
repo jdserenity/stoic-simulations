@@ -1,4 +1,4 @@
-import { clientId, ensureClient, error, json, parseIds } from '../_shared';
+import { ensureUser, error, json, parseIds, userId } from '../_shared';
 
 type MigrateBody = {
   dateKey?: string;
@@ -14,9 +14,6 @@ type MigrateBody = {
 };
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  const cid = clientId(context.request);
-  if (!cid) return error('Missing or invalid X-Client-Id', 400);
-
   let body: MigrateBody;
   try {
     body = await context.request.json() as MigrateBody;
@@ -27,18 +24,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const dateKey = body.dateKey?.trim();
   if (!dateKey) return error('dateKey required', 400);
 
-  await ensureClient(context.env.DB, cid);
+  await ensureUser(context.env.DB);
+  const uid = userId();
   const db = context.env.DB;
 
   const existing = await db.prepare(
     'SELECT 1 FROM day_sessions WHERE client_id = ? AND date_key = ?',
-  ).bind(cid, dateKey).first();
+  ).bind(uid, dateKey).first();
 
   if (!existing && Array.isArray(body.assignedIds) && body.assignedIds.length > 0) {
     await db.prepare(
       'INSERT INTO day_sessions (client_id, date_key, assigned_ids, completed_ids) VALUES (?, ?, ?, ?)',
     ).bind(
-      cid,
+      uid,
       dateKey,
       JSON.stringify(body.assignedIds),
       JSON.stringify(body.completedIds ?? []),
@@ -53,7 +51,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT(client_id, scope, bucket_key, exercise_id, field_id)
        DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-    ).bind(cid, d.scope, d.bucketKey, d.exerciseId, d.fieldId, d.value).run();
+    ).bind(uid, d.scope, d.bucketKey, d.exerciseId, d.fieldId, d.value).run();
   }
 
   return json({ ok: true });

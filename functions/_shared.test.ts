@@ -1,17 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { clientId, localDateKey, parseIds, toDayDto } from './_shared';
+import { USER_ID, localDateKey, parseIds, toDayDto, userId } from './_shared';
 
-describe('clientId', () => {
-  it('accepts valid uuid', () => {
-    const req = new Request('http://x', {
-      headers: { 'X-Client-Id': '550e8400-e29b-41d4-a716-446655440000' },
-    });
-    expect(clientId(req)).toBe('550e8400-e29b-41d4-a716-446655440000');
-  });
-
-  it('rejects invalid id', () => {
-    const req = new Request('http://x', { headers: { 'X-Client-Id': 'bad' } });
-    expect(clientId(req)).toBeNull();
+describe('userId', () => {
+  it('returns the single-user id', () => {
+    expect(userId()).toBe(USER_ID);
+    expect(USER_ID).toBe('user');
   });
 });
 

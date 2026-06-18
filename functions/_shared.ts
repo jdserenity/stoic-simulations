@@ -1,8 +1,10 @@
 import type { DayStateDto } from '../shared/api-types';
 import { todayKey } from '../src/lib/daily';
 
-const CLIENT_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Single-user DB: all rows use this client_id. */
+export const USER_ID = 'user';
 
 export function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
@@ -15,9 +17,8 @@ export function error(message: string, status: number): Response {
   return json({ error: message }, status);
 }
 
-export function clientId(request: Request): string | null {
-  const id = request.headers.get('X-Client-Id')?.trim() ?? '';
-  return CLIENT_RE.test(id) ? id : null;
+export function userId(): string {
+  return USER_ID;
 }
 
 /** Device-local calendar day (YYYY-MM-DD); falls back to UTC when header missing/invalid. */
@@ -26,8 +27,8 @@ export function localDateKey(request: Request): string {
   return DATE_KEY_RE.test(header) ? header : todayKey();
 }
 
-export async function ensureClient(db: D1Database, id: string): Promise<void> {
-  await db.prepare('INSERT OR IGNORE INTO clients (id) VALUES (?)').bind(id).run();
+export async function ensureUser(db: D1Database): Promise<void> {
+  await db.prepare('INSERT OR IGNORE INTO clients (id) VALUES (?)').bind(USER_ID).run();
 }
 
 export function parseIds(raw: string): string[] {
