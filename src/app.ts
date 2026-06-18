@@ -11,8 +11,6 @@ import {
   type DayState,
 } from './lib/storage';
 import type { DailyMeditationsDto } from '../shared/api-types';
-import { getClientId } from './lib/client-id';
-import { copyText } from './lib/copy-text';
 import {
   addMeditation,
   deleteMeditation,
@@ -20,13 +18,14 @@ import {
   getCachedDailyMeditations,
 } from './lib/meditations';
 
-type View = 'home' | 'daily' | 'library-list' | 'library' | 'settings';
+type View = 'home' | 'daily' | 'library-list' | 'library';
 
 let view: View = 'home';
 let activeId: string | null = null;
 let activeScope: 'daily' | 'library' = 'daily';
 let dayState: DayState | null = null;
 let dailyMeds: DailyMeditationsDto | null = null;
+let addingMed = false;
 let ready = false;
 
 const root = document.getElementById('app')!;
@@ -76,32 +75,39 @@ function renderExercise(ex: Exercise, scope: 'daily' | 'library'): string {
   `;
 }
 
+function renderMedsSection(): string {
+  const items = dailyMeds?.items ?? [];
+  const cards = items.map((m) =>
+    `<div class="meditation" data-med-id="${esc(m.id)}"><div class="meditation-text">${esc(m.text)}</div></div>`
+  ).join('');
+  const add = addingMed
+    ? `<form id="med-add-form" class="med-add-form"><textarea id="med-add-text" rows="3" placeholder="A line worth keeping"></textarea><div class="med-add-actions"><button type="button" class="ghost med-add-cancel" id="med-add-cancel">Cancel</button><button type="submit" class="primary med-add-save">Save</button></div></form>`
+    : `<button type="button" class="med-add" id="med-add-btn" aria-label="Add meditation">+</button>`;
+  return `<div class="meds">${cards}${add}</div>`;
+}
+
 function renderHome(): string {
   const state = dayState ?? getCachedDayState();
   if (!state) return '<p class="lede">…</p>';
   const total = state.assignedIds.length;
   const done = displayDone(state.completedIds.length, state.dateKey);
+  const meds = renderMedsSection();
 
   if (state.dailyComplete) {
     return `
       <section class="home">
-        <h1>Today</h1>
-        <p class="lede">Daily practice complete (${done}/${total}).</p>
-        <button type="button" class="primary block" data-nav="library-list">Library</button>
+        <div class="exercises">
+          <h1>Today</h1>
+          <p class="lede">Daily practice complete (${done}/${total}).</p>
+          <button type="button" class="primary block" data-nav="library-list">Library</button>
+        </div>
+        ${meds}
       </section>
     `;
   }
 
   const next = state.nextId ? exerciseById(state.nextId) : null;
   const title = next?.title ?? 'Practice';
-
-  const meds = dailyMeds?.items?.length
-    ? `<div class="meds">${
-        dailyMeds.items.map((m) =>
-          `<div class="meditation" data-med-id="${esc(m.id)}"><div class="meditation-text">${esc(m.text)}</div></div>`
-        ).join('')
-      }</div>`
-    : '';
 
   return `
     <section class="home">
@@ -111,29 +117,6 @@ function renderHome(): string {
         <button type="button" class="primary block" data-nav="daily" data-id="${esc(state.nextId ?? '')}">${esc(title)}</button>
       </div>
       ${meds}
-      <button type="button" class="ghost block" data-nav="settings">Save from X</button>
-    </section>
-  `;
-}
-
-function renderSettings(): string {
-  const id = getClientId();
-  const apiUrl = `${window.location.origin}/api/meditations`;
-  return `
-    <section class="settings">
-      <h1>Save from X</h1>
-      <p class="lede">iOS does not let PWAs appear in the share sheet. Use a personal Shortcut instead.</p>
-      <p class="meta">Device ID</p>
-      <p class="client-id">${esc(id)}</p>
-      <button type="button" class="primary block" id="copy-client-id">Copy ID</button>
-      <p class="lede setup-steps">One-time setup: Shortcuts → + → ⓘ Details → <strong>Show in Share Sheet</strong> (no “Receive” action — iOS adds an input block at the top). Limit types to Text + URLs. Add <strong>Get Contents of URL</strong> POST to <span class="mono">${esc(apiUrl)}</span> with headers <span class="mono">Content-Type</span>, <span class="mono">X-Client-Id</span>, <span class="mono">X-Local-Date</span> (<span class="mono">yyyy-MM-dd</span>), body <span class="mono">{"text":"…"}</span> using variable <span class="mono">Shortcut Input</span>.</p>
-      <form id="add-med-form" class="fields">
-        <p class="meta">Or add manually</p>
-        <label class="field"><span>Text</span><textarea id="med-text" rows="4" placeholder="Paste post text"></textarea></label>
-        <label class="field"><span>URL (optional)</span><input id="med-url" type="text" placeholder="https://x.com/…" /></label>
-        <button type="submit" class="primary block">Save meditation</button>
-      </form>
-      <button type="button" class="ghost block" data-nav="home">Back</button>
     </section>
   `;
 }
@@ -158,7 +141,6 @@ function paint(): void {
 
   let html = '';
   if (view === 'home') html = renderHome();
-  else if (view === 'settings') html = renderSettings();
   else if (view === 'library-list') html = renderLibraryList();
   else if ((view === 'daily' || view === 'library') && activeId) {
     const ex = exerciseById(activeId);
@@ -206,6 +188,7 @@ function bind(): void {
       const id = (el as HTMLElement).dataset.id;
       if (nav === 'daily' && id) { void openExercise(id, 'daily'); return; }
       if (nav === 'library' && id) { void openExercise(id, 'library'); return; }
+      addingMed = false;
       view = nav;
       activeId = null;
       paint();
@@ -217,7 +200,7 @@ function bind(): void {
     if (ex) bindForm(ex, activeScope);
   }
 
-  if (view === 'settings') bindSettings();
+  if (view === 'home') bindHome();
 
   root.querySelectorAll('.meditation').forEach((el) => {
     const id = (el as HTMLElement).dataset.medId;
@@ -277,27 +260,26 @@ function bind(): void {
   });
 }
 
-function bindSettings(): void {
-  document.getElementById('copy-client-id')?.addEventListener('click', () => {
-    void copyText(getClientId()).then((ok) => {
-      const btn = document.getElementById('copy-client-id');
-      if (!btn) return;
-      const prev = btn.textContent;
-      btn.textContent = ok ? 'Copied' : 'Copy failed';
-      window.setTimeout(() => { btn.textContent = prev; }, 1500);
-    });
+function bindHome(): void {
+  document.getElementById('med-add-btn')?.addEventListener('click', () => {
+    addingMed = true;
+    paint();
+    window.setTimeout(() => document.getElementById('med-add-text')?.focus(), 0);
   });
-  document.getElementById('add-med-form')?.addEventListener('submit', (e) => {
+  document.getElementById('med-add-cancel')?.addEventListener('click', () => {
+    addingMed = false;
+    paint();
+  });
+  document.getElementById('med-add-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const text = (document.getElementById('med-text') as HTMLTextAreaElement | null)?.value ?? '';
-    const url = (document.getElementById('med-url') as HTMLInputElement | null)?.value ?? '';
+    const text = (document.getElementById('med-add-text') as HTMLTextAreaElement | null)?.value ?? '';
     void (async () => {
       try {
-        await addMeditation({ text: text.trim(), url: url.trim() || undefined });
+        await addMeditation({ text: text.trim() });
         dailyMeds = await ensureDailyMeditations();
-        view = 'home';
+        addingMed = false;
         paint();
-      } catch { /* leave form filled */ }
+      } catch { /* keep form open */ }
     })();
   });
 }

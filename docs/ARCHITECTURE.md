@@ -72,9 +72,9 @@ Private personal collection of the user's own short timeless/philosophical insig
 
 **Platform:** iPhone only (Safari PWA). iOS does not support the Web Share Target API (`share_target` in the manifest is not used).
 
-- **Capture from X:** personal **iOS Shortcut** in the share sheet. The Shortcut POSTs to `POST /api/meditations` with the device UUID (`X-Client-Id`, copied from **Save from X** in the app), `X-Local-Date` (`YYYY-MM-DD`), and JSON body `{ "text": "…", "url": "…" }`. No X account connection.
-- **Capture fallback:** manual entry on the **Save from X** screen (same API).
-- **Daily surfacing:** 3 items per device-local calendar day.
+- **Capture from X:** personal **iOS Shortcut** in the share sheet. The Shortcut POSTs to `POST /api/meditations` with the device UUID (`X-Client-Id`, same value as `localStorage` `stoic:clientId`), `X-Local-Date` (`YYYY-MM-DD`), and JSON body `{ "text": "…", "url": "…" }`. No X account connection.
+- **Manual capture:** **+** on the Today home screen — single text field for a quote or line worth keeping (not X-specific).
+- **Daily surfacing:** up to 3 items per device-local calendar day (fewer if the pool is smaller).
 - **Deck model:** without-replacement shuffled stack. The current set of saved items is shuffled into order; items are drawn and advanced through until the stack is empty, then the full current set is reshuffled for the next cycle. New items added via capture go into the next cycle only (do not enter the active remaining deck).
 - **Delete:** long-press a meditation card on Today.
 - **Persistence:** same per-client-id model (`localStorage` `stoic:clientId` → `X-Client-Id`) + D1 tables above.
@@ -84,7 +84,7 @@ Private personal collection of the user's own short timeless/philosophical insig
 
 Per [Apple’s Shortcuts guide](https://support.apple.com/guide/shortcuts/launch-a-shortcut-from-another-app-apd163eb9f95/ios): there is **no “Receive” action** to search for. Share-sheet input is enabled in the shortcut’s **Details**, which inserts an input block at the top automatically.
 
-1. In the PWA, open **Save from X** → **Copy ID** (temporary screen; remove after setup).
+1. Read `stoic:clientId` from the PWA (`localStorage`, or Safari Web Inspector → Application → Local Storage) for `X-Client-Id`.
 2. Shortcuts → **+** (new shortcut).
 3. Tap **ⓘ Details** (bottom of editor) → turn on **Show in Share Sheet** → **Done**. A block appears at the top of the workflow (input types; default **Any**).
 4. Tap that input block (or **Share Sheet Types** in Details) → limit to **Text** and **URLs** so the shortcut can appear when sharing from X.
@@ -96,7 +96,5 @@ Per [Apple’s Shortcuts guide](https://support.apple.com/guide/shortcuts/launch
 7. Name the shortcut (e.g. “Stoic”). In X → Share → scroll past app icons to **Stoic** (or **Edit Actions** to pin it).
 
 If the shortcut does not appear in X’s share sheet, the post may not match the selected input types; try allowing **URLs** only or **Anything** while testing.
-
-**Remove** the in-app **Save from X** entry point after the shortcut works and the UUID is stored in the Shortcut.
 
 Non-goals (in addition to prior sections): no reposting or automation on X/other platforms; no chronological feed or full archive browser as the primary UI; no multi-user or cross-profile sync beyond the existing per-client model; no native App Store app (Shortcut replaces share extension unless that changes later).

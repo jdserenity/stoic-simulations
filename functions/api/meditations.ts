@@ -30,7 +30,9 @@ async function loadDailyMeds(db: D1Database, cid: string, dateKey: string): Prom
   const row = await db.prepare(
     'SELECT item_ids FROM meditation_days WHERE client_id = ? AND date_key = ?'
   ).bind(cid, dateKey).first<{ item_ids: string }>();
-  return row ? parseIds(row.item_ids) : null;
+  if (!row) return null;
+  const ids = parseIds(row.item_ids);
+  return ids.length > 0 ? ids : null;
 }
 
 async function saveDailyMeds(db: D1Database, cid: string, dateKey: string, ids: string[]): Promise<void> {
@@ -47,7 +49,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const allRes = await context.env.DB.prepare('SELECT id FROM meditations WHERE client_id = ?').bind(cid).all<{ id: string }>();
   const allIds = allRes.results.map((r) => r.id);
   let assigned = await loadDailyMeds(context.env.DB, cid, dateKey);
-  if (needsDailyMeditationDraw(assigned, allIds.length)) {
+  if (needsDailyMeditationDraw(assigned)) {
     const stack = await loadOrCreateStack(context.env.DB, cid);
     const { drawn, newDeck, newPos } = drawFromStack(allIds, stack.deck, stack.pos, 3);
     await saveStack(context.env.DB, cid, newDeck, newPos);

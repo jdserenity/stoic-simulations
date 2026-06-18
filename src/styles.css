@@ -144,7 +144,7 @@ button.block {
   opacity: 0.7;
 }
 
-.home, .library, .exercise, .settings {
+.home, .library, .exercise {
   padding-top: 0.5rem;
 }
 
@@ -200,18 +200,45 @@ button.block {
   to { width: 100%; }
 }
 
-.client-id, .mono {
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 0.8rem;
-  word-break: break-all;
+.med-add {
+  align-self: center;
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--text);
+  opacity: 0.45;
 }
 
-.client-id {
-  margin: 0 0 0.75rem;
-  color: var(--accent);
+.med-add:active {
+  opacity: 0.75;
 }
 
-.setup-steps {
-  font-size: 0.85rem;
-  opacity: 0.9;
+.med-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.med-add-form textarea {
+  min-height: 4.5rem;
+}
+
+.med-add-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.med-add-actions .ghost,
+.med-add-actions .primary {
+  flex: 1;
+  width: auto;
+  padding: 0.65rem 0.5rem;
+  border-top: none;
+  font-size: 0.9rem;
+}
+
+.med-add-actions .primary {
+  color: var(--bg);
+  background: var(--accent);
 }
