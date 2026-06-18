@@ -205,6 +205,19 @@ button.block {
   to { width: 100%; }
 }
 
+.med-saved-note {
+  margin-top: 1.35rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text);
+  opacity: 0.55;
+}
+
+.med-saved-note + .med-add,
+.med-saved-note + .med-add-form {
+  margin-top: 0.45rem;
+}
+
 .med-add {
   align-self: center;
   margin-top: 1.35rem;

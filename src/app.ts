@@ -17,6 +17,7 @@ import {
   ensureDailyMeditations,
   getCachedDailyMeditations,
 } from './lib/meditations';
+import { medSavedMessage } from './lib/med-saved-note';
 
 type View = 'home' | 'daily' | 'library-list' | 'library';
 
@@ -26,6 +27,8 @@ let activeScope: 'daily' | 'library' = 'daily';
 let dayState: DayState | null = null;
 let dailyMeds: DailyMeditationsDto | null = null;
 let addingMed = false;
+let medSavedNote: string | null = null;
+let medSavedTimer: number | null = null;
 let ready = false;
 
 const root = document.getElementById('app')!;
@@ -75,15 +78,34 @@ function renderExercise(ex: Exercise, scope: 'daily' | 'library'): string {
   `;
 }
 
+function clearMedSavedNote(): void {
+  if (medSavedTimer !== null) {
+    clearTimeout(medSavedTimer);
+    medSavedTimer = null;
+  }
+  medSavedNote = null;
+}
+
+function showMedSavedNote(text: string): void {
+  clearMedSavedNote();
+  medSavedNote = medSavedMessage(text);
+  medSavedTimer = window.setTimeout(() => {
+    medSavedNote = null;
+    medSavedTimer = null;
+    if (view === 'home' && ready) paint();
+  }, 4500);
+}
+
 function renderMedsSection(): string {
   const items = dailyMeds?.items ?? [];
   const cards = items.map((m) =>
     `<div class="meditation" data-med-id="${esc(m.id)}"><div class="meditation-text">${esc(m.text)}</div></div>`
   ).join('');
+  const note = medSavedNote ? `<p class="med-saved-note">${esc(medSavedNote)}</p>` : '';
   const add = addingMed
     ? `<form id="med-add-form" class="med-add-form"><textarea id="med-add-text" rows="3" placeholder="A line worth keeping"></textarea><div class="med-add-actions"><button type="button" class="ghost med-add-cancel" id="med-add-cancel">Cancel</button><button type="submit" class="primary med-add-save">Save</button></div></form>`
     : `<button type="button" class="med-add" id="med-add-btn" aria-label="Add meditation">+</button>`;
-  return `<div class="meds"><div class="med-cards">${cards}</div>${add}</div>`;
+  return `<div class="meds"><div class="med-cards">${cards}</div>${note}${add}</div>`;
 }
 
 function renderHome(): string {
@@ -189,6 +211,7 @@ function bind(): void {
       if (nav === 'daily' && id) { void openExercise(id, 'daily'); return; }
       if (nav === 'library' && id) { void openExercise(id, 'library'); return; }
       addingMed = false;
+      clearMedSavedNote();
       view = nav;
       activeId = null;
       paint();
@@ -262,6 +285,7 @@ function bind(): void {
 
 function bindHome(): void {
   document.getElementById('med-add-btn')?.addEventListener('click', () => {
+    clearMedSavedNote();
     addingMed = true;
     paint();
     window.setTimeout(() => document.getElementById('med-add-text')?.focus(), 0);
@@ -273,11 +297,13 @@ function bindHome(): void {
   document.getElementById('med-add-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = (document.getElementById('med-add-text') as HTMLTextAreaElement | null)?.value ?? '';
+    const trimmed = text.trim();
     void (async () => {
       try {
-        await addMeditation({ text: text.trim() });
+        await addMeditation({ text: trimmed });
         dailyMeds = await ensureDailyMeditations();
         addingMed = false;
+        showMedSavedNote(trimmed);
         paint();
       } catch { /* keep form open */ }
     })();
