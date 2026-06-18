@@ -162,8 +162,13 @@ button.block {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
   padding-top: 1rem; /* some separation from top content */
+}
+
+.med-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
 .meditation.confirming {
@@ -202,7 +207,7 @@ button.block {
 
 .med-add {
   align-self: center;
-  margin-top: 0.25rem;
+  margin-top: 1.35rem;
   padding: 0.35rem 0.75rem;
   font-size: 1.35rem;
   line-height: 1;
@@ -218,6 +223,7 @@ button.block {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  margin-top: 1.35rem;
 }
 
 .med-add-form textarea {

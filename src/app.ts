@@ -83,7 +83,7 @@ function renderMedsSection(): string {
   const add = addingMed
     ? `<form id="med-add-form" class="med-add-form"><textarea id="med-add-text" rows="3" placeholder="A line worth keeping"></textarea><div class="med-add-actions"><button type="button" class="ghost med-add-cancel" id="med-add-cancel">Cancel</button><button type="submit" class="primary med-add-save">Save</button></div></form>`
     : `<button type="button" class="med-add" id="med-add-btn" aria-label="Add meditation">+</button>`;
-  return `<div class="meds">${cards}${add}</div>`;
+  return `<div class="meds"><div class="med-cards">${cards}</div>${add}</div>`;
 }
 
 function renderHome(): string {
