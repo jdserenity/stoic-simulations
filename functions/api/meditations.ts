@@ -1,6 +1,7 @@
 import type { DailyMeditationsDto, Meditation } from '../../shared/api-types';
 import { clientId, ensureClient, error, json, localDateKey, parseIds } from '../_shared';
 import { drawFromStack } from '../../src/lib/meditations-deck';
+import { needsDailyMeditationDraw, shouldPersistDailyAssignment } from '../../src/lib/meditations-daily';
 
 async function loadMeditationsByIds(db: D1Database, cid: string, ids: string[]): Promise<Meditation[]> {
   if (ids.length === 0) return [];
@@ -43,17 +44,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   if (!cid) return error('Missing or invalid X-Client-Id', 400);
   await ensureClient(context.env.DB, cid);
   const dateKey = localDateKey(context.request);
+  const allRes = await context.env.DB.prepare('SELECT id FROM meditations WHERE client_id = ?').bind(cid).all<{ id: string }>();
+  const allIds = allRes.results.map((r) => r.id);
   let assigned = await loadDailyMeds(context.env.DB, cid, dateKey);
-  if (!assigned) {
+  if (needsDailyMeditationDraw(assigned, allIds.length)) {
     const stack = await loadOrCreateStack(context.env.DB, cid);
-    const allRes = await context.env.DB.prepare('SELECT id FROM meditations WHERE client_id = ?').bind(cid).all<{ id: string }>();
-    const allIds = allRes.results.map((r) => r.id);
     const { drawn, newDeck, newPos } = drawFromStack(allIds, stack.deck, stack.pos, 3);
     await saveStack(context.env.DB, cid, newDeck, newPos);
     assigned = drawn;
-    await saveDailyMeds(context.env.DB, cid, dateKey, assigned);
+    if (shouldPersistDailyAssignment(assigned)) await saveDailyMeds(context.env.DB, cid, dateKey, assigned);
   }
-  const items = await loadMeditationsByIds(context.env.DB, cid, assigned);
+  const items = await loadMeditationsByIds(context.env.DB, cid, assigned ?? []);
   return json<DailyMeditationsDto>({ dateKey, items });
 };
 

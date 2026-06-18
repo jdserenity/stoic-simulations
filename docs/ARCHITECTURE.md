@@ -82,17 +82,21 @@ Private personal collection of the user's own short timeless/philosophical insig
 
 ### iOS Shortcut setup (one-time)
 
-1. In the PWA, open **Save from X** → **Copy ID**.
-2. Shortcuts → **+** → add **Receive** → types **Text** and **URLs**, **Show in Share Sheet** on.
-3. Add **Get Contents of URL**:
-   - URL: `https://stoic-simulations.pages.dev/api/meditations` (or your Pages origin + `/api/meditations`)
-   - Method: **POST**
-   - Headers: `Content-Type` = `application/json`; `X-Client-Id` = pasted UUID; `X-Local-Date` = **Formatted Date** → Custom `yyyy-MM-dd` (Shortcut “Date” action → Format)
-   - Request body: **JSON**, e.g. `{"text": "[Shortcut Input or Text]", "url": "[first URL if any]"}`
-   - Turn off “Show Compose Sheet” if offered.
-4. Optional: **Show Notification** “Saved to Stoic”.
-5. Name the Shortcut (e.g. “Stoic”); from X → Share → pick it.
+Per [Apple’s Shortcuts guide](https://support.apple.com/guide/shortcuts/launch-a-shortcut-from-another-app-apd163eb9f95/ios): there is **no “Receive” action** to search for. Share-sheet input is enabled in the shortcut’s **Details**, which inserts an input block at the top automatically.
 
-X often sends both tweet text and a status URL; map text to `text` and the `x.com` link to `url`. If only a URL is shared, put it in `text` or `url` as available.
+1. In the PWA, open **Save from X** → **Copy ID** (temporary screen; remove after setup).
+2. Shortcuts → **+** (new shortcut).
+3. Tap **ⓘ Details** (bottom of editor) → turn on **Show in Share Sheet** → **Done**. A block appears at the top of the workflow (input types; default **Any**).
+4. Tap that input block (or **Share Sheet Types** in Details) → limit to **Text** and **URLs** so the shortcut can appear when sharing from X.
+5. Add actions (search these names in **Add Action**):
+   - **Date** → **Format Date** → Custom `yyyy-MM-dd` (for `X-Local-Date` header).
+   - **Text** — build JSON, e.g. `{"text":"…","url":"…"}`. Tap the field → pick variable **Shortcut Input** (the share payload). X may send text, a URL, or both; start simple: put **Shortcut Input** in `text` and refine after testing.
+   - **Get Contents of URL** — URL `https://stoic-simulations.pages.dev/api/meditations`; **Show More** → Method **POST**; Headers: `Content-Type` `application/json`, `X-Client-Id` (pasted UUID), `X-Local-Date` (Formatted Date from above); Request Body **File** or **JSON** (if JSON fields: `text`, optional `url`). Disable **Show Compose Sheet** if shown.
+6. Optional: **Show Notification** — “Saved to Stoic”.
+7. Name the shortcut (e.g. “Stoic”). In X → Share → scroll past app icons to **Stoic** (or **Edit Actions** to pin it).
+
+If the shortcut does not appear in X’s share sheet, the post may not match the selected input types; try allowing **URLs** only or **Anything** while testing.
+
+**Remove** the in-app **Save from X** entry point after the shortcut works and the UUID is stored in the Shortcut.
 
 Non-goals (in addition to prior sections): no reposting or automation on X/other platforms; no chronological feed or full archive browser as the primary UI; no multi-user or cross-profile sync beyond the existing per-client model; no native App Store app (Shortcut replaces share extension unless that changes later).

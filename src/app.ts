@@ -126,7 +126,7 @@ function renderSettings(): string {
       <p class="meta">Device ID</p>
       <p class="client-id">${esc(id)}</p>
       <button type="button" class="primary block" id="copy-client-id">Copy ID</button>
-      <p class="lede setup-steps">Shortcut: receive Text and URLs from Share Sheet → POST to <span class="mono">${esc(apiUrl)}</span> with headers <span class="mono">Content-Type: application/json</span>, <span class="mono">X-Client-Id</span> (paste ID), <span class="mono">X-Local-Date</span> (today as YYYY-MM-DD), body <span class="mono">{"text":"…","url":"…"}</span>.</p>
+      <p class="lede setup-steps">One-time setup: Shortcuts → + → ⓘ Details → <strong>Show in Share Sheet</strong> (no “Receive” action — iOS adds an input block at the top). Limit types to Text + URLs. Add <strong>Get Contents of URL</strong> POST to <span class="mono">${esc(apiUrl)}</span> with headers <span class="mono">Content-Type</span>, <span class="mono">X-Client-Id</span>, <span class="mono">X-Local-Date</span> (<span class="mono">yyyy-MM-dd</span>), body <span class="mono">{"text":"…"}</span> using variable <span class="mono">Shortcut Input</span>.</p>
       <form id="add-med-form" class="fields">
         <p class="meta">Or add manually</p>
         <label class="field"><span>Text</span><textarea id="med-text" rows="4" placeholder="Paste post text"></textarea></label>
